@@ -11,6 +11,22 @@ const BoardGame = sequelize.define("BoardGame", {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  image_url: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  year_published: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+rating: {
+  type: DataTypes.FLOAT,
+  allowNull: true,
+},
   min_players: {
     type: DataTypes.INTEGER,
     allowNull: true,
@@ -19,13 +35,10 @@ const BoardGame = sequelize.define("BoardGame", {
     type: DataTypes.INTEGER,
     allowNull: true,
   },
-  image_url: {
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
+
 }, {
   tableName: "board_games",
-  timestamps: false, // ou true si tu as createdAt/updatedAt
+  timestamps: false,
 });
 
 module.exports = BoardGame;
