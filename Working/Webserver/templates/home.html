@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+  <form method="GET" action="/search">
+  <input type="text" name="q" placeholder="Search for a game...">
+  <input type="submit" value="Search">
+  </form>
+
+  <h2>Games</h2>
+  <ul>
+    {% for title, genre in games %}
+      <li>{{ title }} - {{ genre }}</li>
+    {% endfor %}
+  </ul>
+  <h2>Recently Updated Games</h2>
+  <ul>
+    {% for game in recent_games %}
+        <li>{{ game[0] }}</li>
+    {% endfor %}
+  </ul>
+
+  <h2>Events</h2>
+  <ul>
+    {% for game, place, time, description in events %}
+      <li><strong>{{ game }}</strong> @ {{ place }} on {{ time }} - {{ description }}</li>
+    {% endfor %}
+  </ul>
+{% endblock %}
+
