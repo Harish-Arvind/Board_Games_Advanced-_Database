@@ -50,3 +50,6 @@ jspm_packages/
 
 # === Build tools ===
 *.tsbuildinfo
+
+__pycache__/
+app.cpython-313.pyc

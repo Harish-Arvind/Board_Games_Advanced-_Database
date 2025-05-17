@@ -199,7 +199,16 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    return render_template('dashboard.html', user=current_user)
+    return f"""
+    <html>
+        <head><title>Dashboard</title></head>
+        <body>
+            <h1>Welcome to the Dashboard</h1>
+            <p>Hello, {current_user.username}!</p>
+        </body>
+    </html>
+    """
+
 
 @app.route('/admin')
 @login_required
