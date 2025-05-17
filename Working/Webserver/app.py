@@ -2,8 +2,9 @@
 # Install dependencies:
 # pip install flask flask-mysqldb flask-login flask-wtf wtforms
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
 from flask_mysqldb import MySQL
+from io import BytesIO
 from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin, current_user
 from wtforms import Form, StringField, PasswordField, validators, TextAreaField
 from datetime import date
@@ -54,14 +55,36 @@ class AddGameForm(Form):
 @app.route('/')
 def home():
     cur = mysql.connection.cursor()
-    cur.execute("SELECT name FROM BOARD_GAMES")
-    games = cur.fetchall()
-    cur.execute("SELECT name FROM BOARD_GAMES ORDER BY updated_at DESC LIMIT 5")
+    cur.execute("SELECT game_id, name, image FROM BOARD_GAMES ORDER BY updated_at DESC LIMIT 10")
     recent_games = cur.fetchall()
-    cur.execute("SELECT name, venue_id, event_time, description FROM EVENTS")
+    cur.execute("""
+        SELECT E.event_id, E.name, E.description, E.event_time, V.name, E.max_participants
+        FROM EVENTS E
+        JOIN VENUE V ON E.venue_id = V.venue_id
+        WHERE E.event_time >= NOW()
+        ORDER BY E.event_time
+    """)
     events = cur.fetchall()
     cur.close()
-    return render_template('home.html', games=games, events=events, recent_games=recent_games)
+    return render_template('home.html', recent_games=recent_games, events=events)
+
+@app.route('/game/<int:game_id>')
+def game_page(game_id):
+    # You can load full game details here later
+    return f"<h1>Game Page for Game ID: {game_id}</h1>"
+
+
+@app.route('/game_image/<int:game_id>')
+def serve_image(game_id):
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT image FROM BOARD_GAMES WHERE game_id = %s", (game_id,))
+    result = cur.fetchone()
+    cur.close()
+
+    if result and result[0]:
+        return send_file(BytesIO(result[0]), mimetype='image/jpeg')
+    return '', 404
+
 
 @app.route('/search')
 def search():
@@ -184,6 +207,27 @@ def rate_game(game_id):
     cur.close()
     flash('Rating submitted.')
     return redirect(url_for('dashboard'))
+
+@app.route('/events/<int:event_id>')
+def event_detail(event_id):
+    cur = mysql.connection.cursor()
+
+    # Get event details
+    cur.execute("""
+        SELECT E.name, E.description, E.event_time, E.max_participants, E.nb_participant, 
+               V.name, V.address, V.max_capacity
+        FROM EVENTS E
+        JOIN VENUE V ON E.venue_id = V.venue_id
+        WHERE E.event_id = %s
+    """, (event_id,))
+    event = cur.fetchone()
+    cur.close()
+
+    if not event:
+        return "Event not found", 404
+
+    return render_template('events.html', event=event)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
