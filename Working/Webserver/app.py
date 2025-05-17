@@ -5,8 +5,12 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_mysqldb import MySQL
 from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin, current_user
-from wtforms import Form, StringField, PasswordField, validators, TextAreaField
+from wtforms import Form, StringField, PasswordField, validators, TextAreaField, SubmitField, TextAreaField
 from datetime import date
+from werkzeug.security import generate_password_hash, check_password_hash
+from wtforms.validators import DataRequired, Length
+from flask_wtf import FlaskForm
+
 
 app = Flask(__name__)
 app.secret_key = 'dont tell anyone'
@@ -30,7 +34,7 @@ class User(UserMixin):
 @login_manager.user_loader
 def load_user(user_id):
     cur = mysql.connection.cursor()
-    cur.execute("SELECT user_id, username, is_admin FROM users WHERE user_id = %s", (user_id,))
+    cur.execute("SELECT user_id, username, is_admin FROM Users WHERE user_id = %s", (user_id,))
     data = cur.fetchone()
     cur.close()
     if data:
@@ -38,18 +42,22 @@ def load_user(user_id):
     return None
 
 # Forms
-class RegisterForm(Form):
-    username = StringField('Username', [validators.Length(min=4, max=25)])
-    password = PasswordField('Password', [validators.InputRequired()])
+class RegistrationForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired(), Length(min=4, max=25)])
+    password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
+    submit = SubmitField('Register')
 
-class LoginForm(Form):
-    username = StringField('Username', [validators.InputRequired()])
-    password = PasswordField('Password', [validators.InputRequired()])
+class LoginForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Login')
 
-class AddGameForm(Form):
-    title = StringField('Title', [validators.InputRequired()])
-    genre = StringField('Genre', [validators.InputRequired()])
-    description = TextAreaField('Description', [validators.Optional()])
+class AddGameForm(FlaskForm):
+    name = StringField('Game Name', validators=[DataRequired(), Length(min=2, max=100)])
+    description = TextAreaField('Description', validators=[DataRequired(), Length(min=10)])
+    submit = SubmitField('Add Game')
+
+
 
 @app.route('/')
 def home():
@@ -75,30 +83,77 @@ def search():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    form = RegisterForm(request.form)
-    if request.method == 'POST' and form.validate():
+    form = RegistrationForm()
+
+    if form.validate_on_submit():
+        username = form.username.data.strip()
+        password = form.password.data
+        hashed_password = generate_password_hash(password)
+
         cur = mysql.connection.cursor()
-        cur.execute("INSERT INTO users (username, password, is_admin, is_blocked) VALUES (%s, %s, 0, 0)", 
-                    (form.username.data, form.password.data))
-        mysql.connection.commit()
-        cur.close()
-        return redirect(url_for('login'))
+        try:
+            # Check if username already exists
+            cur.execute("SELECT * FROM Users WHERE username = %s", (username,))
+            existing_user = cur.fetchone()
+
+            if existing_user:
+                flash("Username already exists", "warning")
+                return render_template("register.html", form=form)
+
+            # Insert new user
+            cur.execute(
+                "INSERT INTO Users (username, password, is_admin, is_blocked) VALUES (%s, %s, %s, %s)",
+                (username, hashed_password, False, False)
+            )
+            mysql.connection.commit()
+            flash("Registration successful. You can now log in.", "success")
+            return redirect(url_for('login'))
+
+        except Exception as e:
+            flash(f"Database error: {e}", "danger")
+        finally:
+            cur.close()
+
     return render_template('register.html', form=form)
+
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    form = LoginForm(request.form)
-    if request.method == 'POST' and form.validate():
+    form = LoginForm()
+
+    if form.validate_on_submit():
+        username = form.username.data.strip()
+        password = form.password.data
+
         cur = mysql.connection.cursor()
-        cur.execute("SELECT user_id, username, password, is_admin FROM users WHERE username = %s", (form.username.data,))
-        data = cur.fetchone()
-        cur.close()
-        if data and form.password.data == data[2]:
-            user = User(id=data[0], username=data[1], role='admin' if data[3] else 'user')
-            login_user(user)
-            return redirect(url_for('dashboard'))
-        flash('Invalid credentials')
+        try:
+            cur.execute(
+                "SELECT user_id, username, password, is_admin FROM Users WHERE username = %s",
+                (username,)
+            )
+            data = cur.fetchone()
+        except Exception as e:
+            flash('Database error: ' + str(e), 'danger')
+            return render_template('login.html', form=form)
+        finally:
+            cur.close()
+
+        if data:
+            stored_hashed_password = data[2]
+            if check_password_hash(stored_hashed_password, password):
+                user = User(id=data[0], username=data[1], role='admin' if data[3] else 'user')
+                login_user(user)
+                flash('Login successful', 'success')
+                return redirect(url_for('dashboard'))
+            else:
+                flash('Incorrect password', 'danger')
+        else:
+            flash('Username not found', 'danger')
+
     return render_template('login.html', form=form)
+
+
 
 @app.route('/block_user/<int:user_id>', methods=['POST'])
 @login_required
@@ -106,7 +161,7 @@ def block_user(user_id):
     if current_user.role != 'admin':
         return redirect(url_for('home'))
     cur = mysql.connection.cursor()
-    cur.execute("UPDATE users SET is_blocked = 1 WHERE user_id = %s", (user_id,))
+    cur.execute("UPDATE Users SET is_blocked = 1 WHERE user_id = %s", (user_id,))
     mysql.connection.commit()
     cur.close()
     flash('User blocked.')

@@ -2,7 +2,7 @@ module.exports = {
     HOST: "localhost", 
     USER: "Admin", //Field to change
     PASSWORD: "Admin", //Field to change
-    DB: "home_decoration",
+    DB: "BoardGames",
     dialect: "mysql",
     port: 3306, // Check that this port is 3306
     pool: {

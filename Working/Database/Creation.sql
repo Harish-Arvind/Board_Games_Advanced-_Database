@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS Users(
    user_id INT AUTO_INCREMENT,
    is_admin boolean NOT NULL,
    username VARCHAR(50) NOT NULL,
-   password VARCHAR(50) NOT NULL,
+   password VARCHAR(255) NOT NULL,
    is_blocked boolean NOT NULL,
    PRIMARY KEY(user_id),
    UNIQUE (username)
