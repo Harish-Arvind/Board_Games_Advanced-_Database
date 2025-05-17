@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h2>{{ event[0] }}</h2>
+  <p>{{ event[1] }}</p>
+  <ul>
+    <li><strong>Date:</strong> {{ event[2].strftime('%Y-%m-%d') }}</li>
+    <li><strong>Time:</strong> {{ event[2].strftime('%H:%M') }}</li>
+    <li><strong>Max Participants:</strong> {{ event[3] }}</li>
+    <li><strong>Registered Participants:</strong> {{ event[4] }}</li>
+    <li><strong>Venue:</strong> {{ event[5] }} - {{ event[6] }}</li>
+    <li><strong>Venue Capacity:</strong> {{ event[7] }}</li>
+  </ul>
+{% endblock %}
